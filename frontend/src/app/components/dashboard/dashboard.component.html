@@ -1,0 +1,95 @@
+<div class="dashboard-container" *ngIf="!loading">
+  <!-- Header -->
+  <mat-toolbar color="primary">
+    <span>AI Education Platform</span>
+    <span class="spacer"></span>
+    <span *ngIf="currentUser">Welcome, {{ currentUser.firstName }}!</span>
+    <button mat-icon-button (click)="logout()">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <div class="dashboard-content">
+    <!-- Student Dashboard -->
+    <div *ngIf="authService.isStudent()" class="student-dashboard">
+
+
+
+
+      <!-- Achievements -->
+      <mat-card class="achievements-card" *ngIf="progress.achievements?.length">
+        <mat-card-header>
+          <mat-card-title>🏆 Recent Achievements</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="achievements-grid">
+            <div *ngFor="let achievement of progress.achievements" class="achievement-item">
+              <span class="achievement-icon">{{ achievement.badgeIcon }}</span>
+              <div>
+                <strong>{{ achievement.title }}</strong>
+                <p>{{ achievement.description }}</p>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Available Exams -->
+    <mat-card class="exams-card">
+      <mat-card-header>
+        <mat-card-title>📝 Available Exams</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngIf="activeExams.length === 0" class="no-exams">
+          No active exams available.
+        </div>
+        <div *ngFor="let exam of activeExams" class="exam-item">
+          <div class="exam-info">
+            <h3>{{ exam.title }}</h3>
+            <p>{{ exam.description }}</p>
+            <div class="exam-details">
+              <span>Duration: {{ exam.duration }} minutes</span>
+              <span>Total Marks: {{ exam.totalMarks }}</span>
+            </div>
+          </div>
+          <button mat-raised-button color="primary" [routerLink]="['/exam', exam.id]">
+            Start Exam
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Quick Actions -->
+    <mat-card class="actions-card">
+      <mat-card-header>
+        <mat-card-title>Quick Actions</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="actions-grid">
+          <button mat-raised-button color="accent" routerLink="/leaderboard">
+            <mat-icon>leaderboard</mat-icon>
+            View Leaderboard
+          </button>
+          <button mat-raised-button routerLink="/exam-history">
+            <mat-icon>history</mat-icon>
+            Exam History
+          </button>
+          <button mat-raised-button *ngIf="authService.isTeacher()">
+            <mat-icon>add</mat-icon>
+            Create Exam
+          </button>
+          <button mat-raised-button>
+            <mat-icon>settings</mat-icon>
+            Settings
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
+
+<div *ngIf="loading" class="loading-container">
+  <mat-spinner></mat-spinner>
+  <p>Loading dashboard...</p>
+</div>

@@ -1,0 +1,164 @@
+<div class="teacher-dashboard">
+  <mat-toolbar color="primary">
+    <span>Teacher Dashboard</span>
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="logout()" title="Logout">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>Create and Manage Exams</mat-card-title>
+    </mat-card-header>
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="toggleCreateForm()">
+        {{ showCreateForm ? 'Cancel' : 'Create New Exam' }}
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  <!-- Create Exam Form -->
+  <mat-card *ngIf="showCreateForm" class="create-form">
+    <mat-card-header>
+      <mat-card-title>Create New Exam</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="examForm" (ngSubmit)="createExam()">
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Exam Title</mat-label>
+            <input matInput formControlName="title" placeholder="Enter exam title">
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3" placeholder="Enter exam description"></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Duration (minutes)</mat-label>
+            <input matInput type="number" formControlName="duration">
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Total Marks</mat-label>
+            <input matInput type="number" formControlName="totalMarks">
+          </mat-form-field>
+        </div>
+
+        <!-- Questions Section -->
+        <div class="questions-section">
+          <h3>Questions</h3>
+          <div formArrayName="questions">
+            <div *ngFor="let question of questions.controls; let i = index" [formGroupName]="i" class="question-card">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>Question {{ i + 1 }}</mat-card-title>
+                  <button mat-icon-button color="warn" (click)="removeQuestion(i)" *ngIf="questions.length > 1">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </mat-card-header>
+                <mat-card-content>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Question Text</mat-label>
+                    <textarea matInput formControlName="questionText" rows="2"></textarea>
+                  </mat-form-field>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Type</mat-label>
+                      <mat-select formControlName="type" (selectionChange)="onQuestionTypeChange(i, $event.value)">
+                        <mat-option value="MULTIPLE_CHOICE">Multiple Choice</mat-option>
+                        <mat-option value="TRUE_FALSE">True/False</mat-option>
+                        <mat-option value="CODING">Coding Question</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Marks</mat-label>
+                      <input matInput type="number" formControlName="marks">
+                    </mat-form-field>
+                  </div>
+
+                  <div *ngIf="question.get('type')?.value === 'MULTIPLE_CHOICE'">
+                    <div formArrayName="options">
+                      <mat-form-field appearance="outline" class="option-field" *ngFor="let option of getOptions(i).controls; let j = index">
+                        <mat-label>Option {{ j + 1 }}</mat-label>
+                        <input matInput [formControlName]="j" placeholder="Enter option {{ j + 1 }}">
+                      </mat-form-field>
+                    </div>
+                    <p class="hint-text">💡 Make sure the correct answer matches exactly one of the options above</p>
+                  </div>
+
+                  <div *ngIf="question.get('type')?.value === 'CODING'">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Programming Language</mat-label>
+                      <mat-select formControlName="language">
+                        <mat-option value="java">Java</mat-option>
+                        <mat-option value="python">Python</mat-option>
+                        <mat-option value="cpp">C++</mat-option>
+                        <mat-option value="c">C</mat-option>
+                        <mat-option value="javascript">JavaScript</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    
+                    <mat-form-field appearance="outline" class="full-width">
+                      <mat-label>Starter Code (Optional)</mat-label>
+                      <textarea matInput formControlName="starterCode" rows="4" placeholder="Provide starter code template"></textarea>
+                    </mat-form-field>
+                    
+                    <mat-form-field appearance="outline" class="full-width">
+                      <mat-label>Test Cases (JSON format)</mat-label>
+                      <textarea matInput formControlName="testCases" rows="3" placeholder='[{"input":"5", "output":"120"}, {"input":"3", "output":"6"}]'></textarea>
+                    </mat-form-field>
+                    <p class="hint-text">💡 Test cases should be in JSON format with input and expected output</p>
+                  </div>
+
+                  <mat-form-field appearance="outline" class="full-width" *ngIf="question.get('type')?.value !== 'CODING'">
+                    <mat-label>Correct Answer</mat-label>
+                    <input matInput formControlName="correctAnswer" placeholder="Enter correct answer">
+                  </mat-form-field>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </div>
+          <button mat-stroked-button (click)="addQuestion()" type="button">Add Question</button>
+        </div>
+
+        <mat-card-actions>
+          <button mat-raised-button color="primary" type="submit" [disabled]="!examForm.valid || loading">
+            {{ loading ? 'Creating...' : 'Create Exam' }}
+          </button>
+        </mat-card-actions>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Created Exams List -->
+  <mat-card class="exams-list">
+    <mat-card-header>
+      <mat-card-title>Your Exams</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div *ngIf="createdExams.length === 0" class="no-exams">
+        <p>No exams created yet. Create your first exam!</p>
+      </div>
+      <div *ngFor="let exam of createdExams" class="exam-item">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>{{ exam.title }}</mat-card-title>
+            <mat-card-subtitle>{{ exam.description }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <p><strong>Duration:</strong> {{ exam.duration }} minutes</p>
+            <p><strong>Total Marks:</strong> {{ exam.totalMarks }}</p>
+            <p><strong>Questions:</strong> {{ exam.questions?.length || 0 }}</p>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

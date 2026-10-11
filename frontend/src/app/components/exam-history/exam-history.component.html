@@ -1,0 +1,231 @@
+<div class="exam-history-container">
+  <mat-toolbar color="primary">
+    <button mat-icon-button routerLink="/dashboard">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span>Exam History</span>
+    <span class="spacer"></span>
+    <button mat-icon-button (click)="refreshHistory()" title="Refresh">
+      <mat-icon>refresh</mat-icon>
+    </button>
+    <button mat-icon-button (click)="logout()" title="Logout">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </mat-toolbar>
+
+  <div class="history-content" *ngIf="!loading">
+    <!-- Summary Stats -->
+    <div class="stats-overview">
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <h3>Total Exams</h3>
+          <p class="stat-number">{{ examHistory.length }}</p>
+        </mat-card-content>
+      </mat-card>
+      
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <h3>Average Score</h3>
+          <p class="stat-number">{{ getAverageScore() }}%</p>
+        </mat-card-content>
+      </mat-card>
+      
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <h3>Best Performance</h3>
+          <p class="stat-number">{{ getBestScore() }}%</p>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Exam History List -->
+    <mat-card class="history-list-card">
+      <mat-card-header>
+        <mat-card-title>📚 Your Exam History</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="exam-list">
+          <div *ngFor="let exam of examHistory" class="exam-item">
+            <div class="exam-info">
+              <div class="exam-header">
+                <h3>{{ exam.examTitle }}</h3>
+                <span class="exam-date">{{ exam.dateTaken | date:'medium' }}</span>
+              </div>
+              
+              <div class="exam-stats">
+                <div class="score-section">
+                  <span class="score">{{ exam.score }}/{{ exam.totalMarks }}</span>
+                  <span class="percentage" [style.color]="getGradeColor(exam.grade)">
+                    {{ exam.percentage }}%
+                  </span>
+                  <span class="grade" [style.background-color]="getGradeColor(exam.grade)">
+                    {{ exam.grade }}
+                  </span>
+                </div>
+                
+                <div class="exam-details">
+                  <span class="duration">⏱️ {{ exam.duration }}</span>
+                  <span class="status" [style.color]="getStatusColor(exam.status)">
+                    ● {{ exam.status }}
+                  </span>
+                  <span class="alerts" *ngIf="exam.proctoringAlerts > 0">
+                    ⚠️ {{ exam.proctoringAlerts }} alerts
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="exam-actions">
+              <button mat-button color="primary" (click)="viewDetailedReport(exam)">
+                <mat-icon>assessment</mat-icon>
+                View Report
+              </button>
+              <button mat-button (click)="downloadReport(exam)">
+                <mat-icon>download</mat-icon>
+                Download
+              </button>
+              <button mat-button color="accent" (click)="retakeExam(exam)">
+                <mat-icon>refresh</mat-icon>
+                Retake
+              </button>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Detailed Report Modal -->
+  <div *ngIf="showDetailedReport && selectedExam" class="detailed-report-overlay" (click)="closeDetailedReport()">
+    <div class="detailed-report-modal" (click)="$event.stopPropagation()">
+      <mat-card class="report-card">
+        <mat-card-header>
+          <mat-card-title>📊 Detailed Exam Report</mat-card-title>
+          <button mat-icon-button (click)="closeDetailedReport()" class="close-btn">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-card-header>
+        
+        <mat-card-content>
+          <!-- Exam Overview -->
+          <div class="report-section">
+            <h3>{{ selectedExam.examTitle }}</h3>
+            <div class="overview-grid">
+              <div class="overview-item">
+                <strong>Date Taken:</strong> {{ selectedExam.dateTaken | date:'full' }}
+              </div>
+              <div class="overview-item">
+                <strong>Duration:</strong> {{ selectedExam.duration }}
+              </div>
+              <div class="overview-item">
+                <strong>Final Score:</strong> {{ selectedExam.score }}/{{ selectedExam.totalMarks }}
+              </div>
+              <div class="overview-item">
+                <strong>Percentage:</strong> {{ selectedExam.percentage }}%
+              </div>
+              <div class="overview-item">
+                <strong>Grade:</strong> 
+                <span class="grade-badge" [style.background-color]="getGradeColor(selectedExam.grade)">
+                  {{ selectedExam.grade }}
+                </span>
+              </div>
+              <div class="overview-item">
+                <strong>Proctoring Alerts:</strong> {{ selectedExam.proctoringAlerts }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance Analysis -->
+          <div class="report-section">
+            <h4>🎯 Performance Analysis</h4>
+            <div class="performance-chart">
+              <div class="score-bar">
+                <div class="score-fill" [style.width.%]="selectedExam.percentage"></div>
+              </div>
+              <p class="performance-text">
+                <span *ngIf="selectedExam.percentage >= 90">🌟 Excellent Performance!</span>
+                <span *ngIf="selectedExam.percentage >= 80 && selectedExam.percentage < 90">👍 Good Performance!</span>
+                <span *ngIf="selectedExam.percentage >= 70 && selectedExam.percentage < 80">📈 Average Performance</span>
+                <span *ngIf="selectedExam.percentage < 70">📚 Needs Improvement</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Question-wise Analysis -->
+          <div class="report-section">
+            <h4>📝 Question-wise Analysis</h4>
+            <div class="questions-analysis">
+              <div *ngFor="let question of selectedExam.questions; let i = index" class="question-item">
+                <div class="question-header">
+                  <span class="question-number">Q{{ i + 1 }}</span>
+                  <span class="question-marks">{{ question.marks }} marks</span>
+                  <span class="question-status" [class.correct]="question.correct" [class.incorrect]="!question.correct">
+                    {{ question.correct ? '✓ Correct' : '✗ Incorrect' }}
+                  </span>
+                </div>
+                <p class="question-text">{{ question.question }}</p>
+                <div class="answer-section">
+                  <strong>Your Answer:</strong>
+                  <p class="user-answer">{{ question.userAnswer }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Recommendations -->
+          <div class="report-section">
+            <h4>🤖 AI-Powered Recommendations</h4>
+            <div class="ai-recommendations">
+              <div class="ai-report" [innerHTML]="formatAIRecommendations(selectedExam.aiRecommendations)"></div>
+            </div>
+          </div>
+
+          <!-- Exam Timeline -->
+          <div class="report-section">
+            <h4>⏰ Exam Timeline</h4>
+            <div class="timeline-info">
+              <div class="timeline-item">
+                <strong>Started:</strong> {{ selectedExam.startedAt | date:'full' }}
+              </div>
+              <div class="timeline-item" *ngIf="selectedExam.submittedAt">
+                <strong>Submitted:</strong> {{ selectedExam.submittedAt | date:'full' }}
+              </div>
+              <div class="timeline-item">
+                <strong>Duration:</strong> {{ selectedExam.duration }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Academic Integrity Report -->
+          <div class="report-section" *ngIf="selectedExam.proctoringAlerts > 0">
+            <h4>🔒 Academic Integrity Report</h4>
+            <div class="integrity-report">
+              <p><strong>Total Alerts:</strong> {{ selectedExam.proctoringAlerts }}</p>
+              <p class="integrity-note">
+                <span *ngIf="selectedExam.proctoringAlerts <= 2">✅ Minor alerts detected. Maintain focus during future exams.</span>
+                <span *ngIf="selectedExam.proctoringAlerts > 2">⚠️ Multiple alerts detected. Please review exam guidelines.</span>
+              </p>
+            </div>
+          </div>
+        </mat-card-content>
+        
+        <mat-card-actions>
+          <button mat-raised-button color="primary" (click)="downloadReport(selectedExam)">
+            <mat-icon>download</mat-icon>
+            Download Report
+          </button>
+          <button mat-button (click)="retakeExam(selectedExam)">
+            <mat-icon>refresh</mat-icon>
+            Retake Exam
+          </button>
+          <button mat-button (click)="closeDetailedReport()">Close</button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading exam history...</p>
+  </div>
+</div>

@@ -1,0 +1,248 @@
+<div class="exam-portal-container" *ngIf="!loading">
+  <!-- Pre-Exam Screen -->
+  <div *ngIf="!examStarted && !examSubmitted" class="pre-exam-screen">
+    <mat-card class="exam-info-card">
+      <mat-card-header>
+        <mat-card-title>{{ exam?.title }}</mat-card-title>
+        <mat-card-subtitle>{{ exam?.description }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="exam-details">
+          <p><strong>Duration:</strong> {{ exam?.duration }} minutes</p>
+          <p><strong>Total Marks:</strong> {{ exam?.totalMarks }}</p>
+          <p><strong>Questions:</strong> {{ questions.length }}</p>
+          <p *ngIf="questions.length === 0" class="no-questions-notice" style="color: red; font-weight: bold;">
+            ⚠️ No questions available for this exam. Please contact your instructor.
+          </p>
+          <p *ngIf="exam?.proctoringEnabled" class="proctoring-notice">
+            <mat-icon>videocam</mat-icon>
+            This exam is proctored. Your camera and screen will be monitored.
+          </p>
+        </div>
+        
+        <div class="exam-instructions">
+          <h3>Instructions:</h3>
+          <ul>
+            <li>Ensure stable internet connection</li>
+            <li>Do not switch tabs or minimize window</li>
+            <li>Keep your face visible to camera at all times</li>
+            <li>No external help or materials allowed</li>
+            <li>Exam will auto-submit when time expires</li>
+          </ul>
+        </div>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="startExam()" class="start-exam-btn" 
+                [disabled]="questions.length === 0">
+          Start Exam
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <!-- Exam Interface -->
+  <div *ngIf="examStarted && !examSubmitted" class="exam-interface">
+    <!-- Header with Timer and Progress -->
+    <mat-toolbar class="exam-header">
+      <span>{{ exam?.title }}</span>
+      <span class="spacer"></span>
+      <div class="timer" [class.warning]="timeRemaining < 300">
+        <mat-icon>timer</mat-icon>
+        {{ formatTime(timeRemaining) }}
+      </div>
+    </mat-toolbar>
+
+    <div class="exam-content">
+      <!-- Proctoring Video -->
+      <div *ngIf="proctoringActive" class="proctoring-panel">
+        <div style="position: relative;">
+          <video #videoElement autoplay playsinline muted class="proctoring-video" width="200" height="150"></video>
+          <canvas #canvas class="proctoring-canvas" width="200" height="150"></canvas>
+        </div>
+        <div class="proctoring-status">
+          <mat-icon class="recording-icon">fiber_manual_record</mat-icon>
+          Recording
+        </div>
+      </div>
+
+      <!-- Question Panel -->
+      <div class="question-panel">
+        <mat-card class="question-card">
+          <mat-card-header>
+            <mat-card-title>
+              Question {{ currentQuestionIndex + 1 }} of {{ questions.length }}
+              <span class="question-marks">({{ currentQuestion?.marks }} marks)</span>
+            </mat-card-title>
+          </mat-card-header>
+          
+          <mat-card-content>
+            <div class="progress-bar">
+              <mat-progress-bar mode="determinate" [value]="progressPercentage"></mat-progress-bar>
+            </div>
+
+            <div class="question-content">
+              <p class="question-text">{{ currentQuestion?.questionText }}</p>
+              
+              <!-- Multiple Choice -->
+              <div *ngIf="currentQuestion?.type === 'MULTIPLE_CHOICE'" class="options">
+                <mat-radio-group [value]="answers[currentQuestion!.id]" 
+                                (change)="selectAnswer(currentQuestion!.id, $event.value)">
+                  <mat-radio-button *ngFor="let option of currentQuestion!.options" 
+                                   [value]="option" class="option">
+                    {{ option }}
+                  </mat-radio-button>
+                </mat-radio-group>
+              </div>
+
+              <!-- True/False -->
+              <div *ngIf="currentQuestion?.type === 'TRUE_FALSE'" class="options">
+                <mat-radio-group [value]="answers[currentQuestion!.id]" 
+                                (change)="selectAnswer(currentQuestion!.id, $event.value)">
+                  <mat-radio-button value="True" class="option">True</mat-radio-button>
+                  <mat-radio-button value="False" class="option">False</mat-radio-button>
+                </mat-radio-group>
+              </div>
+
+              <!-- Short Answer -->
+              <div *ngIf="currentQuestion?.type === 'SHORT_ANSWER'" class="text-answer">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Your Answer</mat-label>
+                  <textarea matInput rows="4" 
+                           [value]="answers[currentQuestion!.id] || ''"
+                           (input)="onInputChange($event, currentQuestion!.id)">
+                  </textarea>
+                </mat-form-field>
+              </div>
+
+              <!-- Coding Question -->
+              <div *ngIf="currentQuestion?.type === 'CODING'" class="coding-question">
+                <app-coding-question [question]="currentQuestion"></app-coding-question>
+              </div>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions class="question-actions">
+            <button mat-button (click)="previousQuestion()" 
+                   [disabled]="currentQuestionIndex === 0">
+              <mat-icon>navigate_before</mat-icon>
+              Previous
+            </button>
+            
+            <span class="spacer"></span>
+            
+            <button mat-button (click)="nextQuestion()" 
+                   [disabled]="currentQuestionIndex === questions.length - 1">
+              Next
+              <mat-icon>navigate_next</mat-icon>
+            </button>
+            
+            <button mat-raised-button color="warn" (click)="submitExam()" class="submit-btn" 
+                   [disabled]="submitting">
+              {{ submitting ? 'Submitting...' : 'Submit Exam' }}
+            </button>
+          </mat-card-actions>
+        </mat-card>
+
+        <!-- Question Navigator -->
+        <mat-card class="question-navigator">
+          <mat-card-header>
+            <mat-card-title>Questions</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="question-grid">
+              <button *ngFor="let question of questions; let i = index"
+                     mat-mini-fab
+                     [color]="answers[question.id] ? 'accent' : 'primary'"
+                     [class.current]="i === currentQuestionIndex"
+                     (click)="currentQuestionIndex = i">
+                {{ i + 1 }}
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- Suspicious Activities Panel -->
+    <div *ngIf="suspiciousActivities.length > 0" class="activities-panel">
+      <mat-card>
+        <mat-card-header>
+          <mat-card-title>⚠️ Monitoring Alerts</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="activities-list">
+            <div *ngFor="let activity of suspiciousActivities" class="activity-item">
+              {{ activity }}
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Post-Exam Screen -->
+  <div *ngIf="examSubmitted" class="post-exam-screen">
+    <mat-card class="submission-card">
+      <mat-card-header>
+        <mat-card-title>✅ Exam Submitted Successfully</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <!-- Exam Results -->
+        <div *ngIf="examResult" class="exam-results">
+          <div class="score-display">
+            <h2 class="score-text">{{ examResult.score }} / {{ examResult.totalMarks }}</h2>
+            <p class="percentage-text">{{ examResult.percentage?.toFixed(1) }}%</p>
+          </div>
+          
+          <!-- AI Feedback -->
+          <mat-card class="ai-feedback-card">
+            <mat-card-header>
+              <mat-card-title>🤖 AI Performance Analysis & Learning Tips</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="feedback-content" [innerHTML]="formatAIRecommendations(examResult.proctoringReport)"></div>
+            </mat-card-content>
+          </mat-card>
+          
+          <!-- Detailed Stats -->
+          <div class="stats-grid">
+            <mat-card class="stat-item">
+              <mat-card-content>
+                <h3>Questions Answered</h3>
+                <p class="stat-value">{{ getAnsweredCount() }} / {{ questions.length }}</p>
+              </mat-card-content>
+            </mat-card>
+            
+            <mat-card class="stat-item">
+              <mat-card-content>
+                <h3>Proctoring Alerts</h3>
+                <p class="stat-value">{{ examResult.suspiciousActivityCount || 0 }}</p>
+              </mat-card-content>
+            </mat-card>
+            
+            <mat-card class="stat-item">
+              <mat-card-content>
+                <h3>Completion Time</h3>
+                <p class="stat-value">{{ formatTime((exam?.duration || 60) * 60 - timeRemaining) }}</p>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </div>
+        
+        <div class="submission-actions">
+          <button mat-raised-button color="primary" (click)="goToDashboard()">
+            Back to Dashboard
+          </button>
+          <button mat-button (click)="viewDetailedReport()">
+            View Detailed Report
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
+
+<div *ngIf="loading" class="loading-container">
+  <mat-spinner></mat-spinner>
+  <p>Loading exam...</p>
+</div>

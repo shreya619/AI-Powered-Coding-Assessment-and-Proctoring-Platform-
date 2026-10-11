@@ -1,0 +1,163 @@
+<div class="leaderboard-container">
+  <mat-toolbar color="primary">
+    <button mat-icon-button routerLink="/dashboard">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span>🏆 Leaderboard</span>
+  </mat-toolbar>
+
+  <div class="leaderboard-content" *ngIf="!loading">
+    <mat-tab-group [(selectedIndex)]="selectedTab">
+      <!-- Points Leaderboard -->
+      <mat-tab label="🎯 By Points">
+        <!-- Top 3 Podium -->
+        <div class="podium" *ngIf="leaderboardData.topByPoints?.length >= 3">
+          <div class="podium-item second" *ngIf="leaderboardData.topByPoints[1]">
+            <div class="medal">🥈</div>
+            <mat-card class="student-card silver">
+              <h3>{{ leaderboardData.topByPoints[1].firstName }} {{ leaderboardData.topByPoints[1].lastName }}</h3>
+              <p class="points">{{ leaderboardData.topByPoints[1].totalPoints }} pts</p>
+              <p class="score">{{ leaderboardData.topByPoints[1].averageScore || 0 }}% avg</p>
+            </mat-card>
+          </div>
+          
+          <div class="podium-item first" *ngIf="leaderboardData.topByPoints[0]">
+            <div class="medal">🥇</div>
+            <mat-card class="student-card gold">
+              <h3>{{ leaderboardData.topByPoints[0].firstName }} {{ leaderboardData.topByPoints[0].lastName }}</h3>
+              <p class="points">{{ leaderboardData.topByPoints[0].totalPoints }} pts</p>
+              <p class="score">{{ leaderboardData.topByPoints[0].averageScore || 0 }}% avg</p>
+            </mat-card>
+          </div>
+          
+          <div class="podium-item third" *ngIf="leaderboardData.topByPoints[2]">
+            <div class="medal">🥉</div>
+            <mat-card class="student-card bronze">
+              <h3>{{ leaderboardData.topByPoints[2].firstName }} {{ leaderboardData.topByPoints[2].lastName }}</h3>
+              <p class="points">{{ leaderboardData.topByPoints[2].totalPoints }} pts</p>
+              <p class="score">{{ leaderboardData.topByPoints[2].averageScore || 0 }}% avg</p>
+            </mat-card>
+          </div>
+        </div>
+        
+        <!-- Full Rankings -->
+        <div class="rankings-table">
+          <mat-table [dataSource]="leaderboardData.topByPoints" class="mat-elevation-2">
+            <ng-container matColumnDef="rank">
+              <mat-header-cell *matHeaderCellDef>Rank</mat-header-cell>
+              <mat-cell *matCellDef="let student; let i = index" [class]="getRankClass(i)">
+                {{ getRankIcon(i) }}
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="name">
+              <mat-header-cell *matHeaderCellDef>Student</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                <strong>{{ student.firstName }} {{ student.lastName }}</strong>
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="points">
+              <mat-header-cell *matHeaderCellDef>Points</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                <span class="points-badge">{{ student.totalPoints }}</span>
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="averageScore">
+              <mat-header-cell *matHeaderCellDef>Avg Score</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                <mat-progress-bar 
+                  mode="determinate" 
+                  [value]="student.averageScore || 0" 
+                  [color]="getProgressColor(student.averageScore || 0)">
+                </mat-progress-bar>
+                <span class="score-text">{{ student.averageScore || 0 }}%</span>
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="exams">
+              <mat-header-cell *matHeaderCellDef>Exams</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                {{ student.examResults?.length || 0 }}
+              </mat-cell>
+            </ng-container>
+            
+            <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+          </mat-table>
+        </div>
+      </mat-tab>
+
+      <!-- Score Leaderboard -->
+      <mat-tab label="📊 By Average Score">
+        <div class="rankings-table">
+          <mat-table [dataSource]="leaderboardData.topByScore" class="mat-elevation-2">
+            <ng-container matColumnDef="rank">
+              <mat-header-cell *matHeaderCellDef>Rank</mat-header-cell>
+              <mat-cell *matCellDef="let student; let i = index" [class]="getRankClass(i)">
+                {{ getRankIcon(i) }}
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="name">
+              <mat-header-cell *matHeaderCellDef>Student</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                <strong>{{ student.firstName }} {{ student.lastName }}</strong>
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="averageScore">
+              <mat-header-cell *matHeaderCellDef>Average Score</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                <mat-progress-bar 
+                  mode="determinate" 
+                  [value]="student.averageScore || 0" 
+                  [color]="getProgressColor(student.averageScore || 0)">
+                </mat-progress-bar>
+                <span class="score-text">{{ student.averageScore || 0 }}%</span>
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="points">
+              <mat-header-cell *matHeaderCellDef>Total Points</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                <span class="points-badge">{{ student.totalPoints }}</span>
+              </mat-cell>
+            </ng-container>
+            
+            <ng-container matColumnDef="exams">
+              <mat-header-cell *matHeaderCellDef>Exams Taken</mat-header-cell>
+              <mat-cell *matCellDef="let student">
+                {{ student.examResults?.length || 0 }}
+              </mat-cell>
+            </ng-container>
+            
+            <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+            <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+          </mat-table>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <!-- Motivational Section -->
+    <mat-card class="motivation-card">
+      <mat-card-header>
+        <mat-card-title>🎯 Keep Learning!</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>Compete with your peers and climb the leaderboard! Complete more exams and improve your scores to reach the top.</p>
+        <div class="motivation-actions">
+          <button mat-raised-button color="primary" routerLink="/dashboard">
+            Take More Exams
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading leaderboard...</p>
+  </div>
+</div>

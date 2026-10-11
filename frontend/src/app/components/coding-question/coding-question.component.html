@@ -1,0 +1,76 @@
+<mat-card class="coding-question-card">
+  <mat-card-header>
+    <mat-card-title>{{ question?.title }}</mat-card-title>
+  </mat-card-header>
+  
+  <mat-card-content>
+    <div class="question-description">
+      <p>{{ question?.description }}</p>
+    </div>
+    
+    <div class="code-section">
+      <div class="controls">
+        <mat-form-field appearance="outline">
+          <mat-label>Language</mat-label>
+          <mat-select [(value)]="selectedLanguage" (selectionChange)="onLanguageChange()">
+            <mat-option *ngFor="let lang of languages" [value]="lang.value">
+              {{ lang.label }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+        
+        <button mat-raised-button color="primary" (click)="runCode()" [disabled]="isRunning">
+          <mat-icon>play_arrow</mat-icon>
+          {{ isRunning ? 'Running...' : 'Run Code' }}
+        </button>
+        
+        <button mat-raised-button color="accent" (click)="evaluateCode()" [disabled]="isEvaluating">
+          <mat-icon>assignment_turned_in</mat-icon>
+          {{ isEvaluating ? 'Evaluating...' : 'Save & Evaluate' }}
+        </button>
+      </div>
+      
+      <app-code-editor 
+        [language]="selectedLanguage" 
+        [code]="code"
+        (codeChange)="onCodeChange($event)">
+      </app-code-editor>
+      
+      <div class="input-output-section">
+        <div class="input-section">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Input (optional)</mat-label>
+            <textarea matInput [(ngModel)]="input" rows="3"></textarea>
+          </mat-form-field>
+        </div>
+        
+        <div class="output-section">
+          <h4>Output:</h4>
+          <div class="console-output">
+            <pre>{{ output }}</pre>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Test Case Results -->
+      <div *ngIf="evaluationResult" class="evaluation-results">
+        <h4>Test Case Results: {{ evaluationResult.passedTests }}/{{ evaluationResult.totalTests }} Passed</h4>
+        
+        <div class="test-results">
+          <div *ngFor="let result of evaluationResult.testResults; let i = index" 
+               class="test-case" [class.passed]="result.passed" [class.failed]="!result.passed">
+            <div class="test-header">
+              <span class="test-number">Test {{ i + 1 }}</span>
+              <span class="test-status">{{ result.passed ? '✓ PASSED' : '✗ FAILED' }}</span>
+            </div>
+            <div class="test-details">
+              <div><strong>Input:</strong> {{ result.input }}</div>
+              <div><strong>Expected:</strong> {{ result.expectedOutput }}</div>
+              <div><strong>Actual:</strong> {{ result.actualOutput }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

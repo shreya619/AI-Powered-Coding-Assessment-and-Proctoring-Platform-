@@ -1,1 +1,0 @@
-# AI-Powered-Coding-Assessment-and-Proctoring-Platform-
